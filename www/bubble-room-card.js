@@ -172,7 +172,7 @@ class BubbleRoomCard extends HTMLElement {
         position: absolute !important;
         place-self: center !important;
         margin: 0px 0px 0px 0px !important;
-        padding: 0px, 0px, 0px, 0px !important;
+        padding: 0px !important;
         background-color: var(--icon-bg-color);
       }
 
@@ -188,7 +188,7 @@ class BubbleRoomCard extends HTMLElement {
         grid-area: n;
         justify-self: start;
         margin-left: 20px;
-        max-width: calc(100% -(12px + 0px));
+        max-width: calc(100% - (12px + 0px));
       }
 
       .bubble-name {
