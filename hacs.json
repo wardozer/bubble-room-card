@@ -1,0 +1,12 @@
+{
+  "name": "Bubble Room Card",
+  "content_in_root": false,
+  "filename": "bubble-room-card.js",
+  "country": [],
+  "homeassistant": "2023.8.0",
+  "persistent_directory": false,
+  "iot_class": "Local Polling",
+  "render_readme": true,
+  "zip_release": false,
+  "hide_default_branch": false
+}
