@@ -1,0 +1,61 @@
+# Example configuration for Bubble Room Card
+type: custom:bubble-room-card
+name: Living Room
+icon: mdi:sofa
+main_entity: sensor.living_room_temperature
+navigation_path: /lovelace/living-room
+entities:
+  - entity: light.living_room_lights
+    icon: mdi:lightbulb
+    icon_on: mdi:lightbulb
+    icon_off: mdi:lightbulb-off
+    on_state: "on"
+    tap_action: toggle
+  - entity: switch.living_room_outlets
+    icon: mdi:power-socket-uk
+    icon_on: mdi:power-socket
+    icon_off: mdi:power-socket-off
+    on_state: "on"
+    tap_action: toggle
+  - entity: media_player.living_room_tv
+    icon: phu:apple-tv
+    icon_on: mdi:television
+    icon_off: mdi:television-off
+    on_state: "playing"
+    tap_action: toggle
+
+---
+# Kitchen Example
+type: custom:bubble-room-card
+name: Kitchen
+icon: mdi:chef-hat
+main_entity: sensor.kitchen_temperature
+navigation_path: /lovelace/kitchen
+entities:
+  - entity: light.kitchen_lights
+    icon: mdi:ceiling-light
+    icon_on: mdi:ceiling-light
+    icon_off: mdi:ceiling-light-off
+    on_state: "on"
+    tap_action: toggle
+  - entity: switch.coffee_maker
+    icon: mdi:coffee
+    icon_on: mdi:coffee
+    icon_off: mdi:coffee-off
+    on_state: "on"
+    tap_action: toggle
+
+---
+# Bedroom Example - Single Entity
+type: custom:bubble-room-card
+name: Bedroom
+icon: mdi:bed
+main_entity: sensor.bedroom_temperature
+navigation_path: /lovelace/bedroom
+entities:
+  - entity: light.bedroom_lights
+    icon: mdi:lamp
+    icon_on: mdi:lamp
+    icon_off: mdi:lamp-off
+    on_state: "on"
+    tap_action: toggle
