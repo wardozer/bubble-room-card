@@ -23,6 +23,8 @@ class BubbleRoomCard extends HTMLElement {
 
   render() {
     const bubbleConfig = this.generateBubbleConfig();
+    console.log('Generated Bubble Config:', bubbleConfig); // ADD THIS LINE
+
     
     // Create bubble card element
     const bubbleCard = document.createElement('bubble-card');
