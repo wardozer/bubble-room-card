@@ -1,6 +1,6 @@
 {
   "name": "Bubble Room Card",
-  "content_in_root": false,
+  "content_in_root": true,
   "filename": "bubble-room-card.js",
   "country": [],
   "homeassistant": "2023.8.0",
