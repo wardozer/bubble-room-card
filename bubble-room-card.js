@@ -105,12 +105,26 @@ class BubbleRoomCard extends HTMLElement {
       const bubbleConfig = this.generateBubbleConfig();
       console.log('Generated Bubble Config:', bubbleConfig);
 
+      // Clear previous content
+      this.shadowRoot.innerHTML = '';
+      
       // Create bubble card element
       const bubbleCard = document.createElement('bubble-card');
-      bubbleCard.hass = this._hass;
-      bubbleCard.setConfig(bubbleConfig);
       
-      this.shadowRoot.innerHTML = '';
+      // Set hass first, then config
+      bubbleCard.hass = this._hass;
+      
+      // Try to set config with error handling
+      try {
+        bubbleCard.setConfig(bubbleConfig);
+      } catch (configError) {
+        console.error('Bubble card config error:', configError);
+        // Try with a simpler config if the main one fails
+        const simpleConfig = this.generateSimpleBubbleConfig();
+        console.log('Trying simple config:', simpleConfig);
+        bubbleCard.setConfig(simpleConfig);
+      }
+      
       this.shadowRoot.appendChild(bubbleCard);
     } catch (error) {
       console.error('Bubble Room Card render error:', error);
@@ -119,10 +133,25 @@ class BubbleRoomCard extends HTMLElement {
           <div style="padding: 16px; color: red; text-align: center;">
             <h3>Render Error</h3>
             <p>${error.message}</p>
+            <p><small>Check browser console for details</small></p>
           </div>
         </ha-card>
       `;
     }
+  }
+
+  generateSimpleBubbleConfig() {
+    // Fallback simple configuration
+    return {
+      type: 'custom:bubble-card',
+      card_type: 'button',
+      entity: this.config.main_entity,
+      name: this.config.name,
+      icon: this.config.icon,
+      show_name: true,
+      show_icon: true,
+      show_state: true
+    };
   }
 
   generateBubbleConfig() {
@@ -136,38 +165,39 @@ class BubbleRoomCard extends HTMLElement {
         show_attribute: false,
         show_state: false,
         tap_action: {
-          action: entity.tap_action || 'toggle',
-          haptic: 'light'
+          action: entity.tap_action || 'toggle'
         },
         show_background: true,
         icon: entity.icon || 'mdi:power'
       }));
 
+    // Start with basic config
     const bubbleConfig = {
       type: 'custom:bubble-card',
       card_type: 'button',
-      layout_options: {
-        grid_columns: 2,
-        grid_rows: 3
-      },
       entity: this.config.main_entity,
       name: this.config.name,
       icon: this.config.icon,
-      show_attribute: false,
       show_name: true,
       show_icon: true,
-      scrolling_effect: true,
-      show_state: true,
-      card_layout: 'large-2-rows',
-      button_type: 'state',
-      sub_button: subButtons,
-      tap_action: {
-        action: 'navigate',
-        navigation_path: this.config.navigation_path,
-        haptic: 'light'
-      },
-      styles: this.generateStyles()
+      show_state: true
     };
+
+    // Add optional properties if we have sub-buttons
+    if (subButtons.length > 0) {
+      bubbleConfig.sub_button = subButtons;
+      bubbleConfig.card_layout = 'large-2-rows';
+      bubbleConfig.button_type = 'state';
+    }
+
+    // Add tap action
+    bubbleConfig.tap_action = {
+      action: 'navigate',
+      navigation_path: this.config.navigation_path
+    };
+
+    // Add styles
+    bubbleConfig.styles = this.generateStyles();
 
     return bubbleConfig;
   }
@@ -177,6 +207,21 @@ class BubbleRoomCard extends HTMLElement {
       .slice(0, 4)
       .filter(entity => this._hass.states[entity.entity]); // Only include existing entities
     
+    if (entities.length === 0) {
+      // Simple styles for cards without sub-buttons
+      return `
+        .bubble-button-card {
+          background-color: var(--ha-card-background, var(--card-background-color, white)) !important;
+        }
+        .bubble-name {
+          color: var(--primary-text-color) !important;
+        }
+        .bubble-state {
+          color: var(--secondary-text-color) !important;
+        }
+      `;
+    }
+
     // Generate dynamic icon styles
     let iconVars = '';
     entities.forEach((entity, index) => {
@@ -213,8 +258,7 @@ class BubbleRoomCard extends HTMLElement {
         background-color: rgba(var(\${hass.states['${entity.entity}'].state === '${onState}' ? '--color-bg-on' : '--color-bg-off'}), 0.3) !important;
       }
       .bubble-sub-button-${num} .bubble-sub-button-icon{
-        animation: \${hass.states['${entity.entity}'].state === '${onState}' ? 'sound 0.8s' : ''} !important;
-        animation-iteration-count: infinite !important;
+        animation: \${hass.states['${entity.entity}'].state === '${onState}' ? 'sound 0.8s infinite' : 'none'} !important;
       }`;
     });
 
@@ -245,7 +289,7 @@ class BubbleRoomCard extends HTMLElement {
       }
 
       .large .bubble-button-card-container {
-        height: calc( var(--row-height) * var(--row-size) + var(--row-gap) * ( var(--row-size) - 1 )) !important;
+        height: auto !important;
         overflow: hidden !important;
       }
 
@@ -259,72 +303,71 @@ class BubbleRoomCard extends HTMLElement {
         grid-template-columns: 1fr 1fr 1fr 1fr;
         grid-template-rows: 1.5fr 0.5fr 1fr 1fr;
         justify-items: center;
-        background-color: var(--card-bg-color) !important;
+        background-color: var(--card-bg-color, var(--ha-card-background)) !important;
+        min-height: 120px;
       }
 
       .bubble-icon-container {
         grid-area: i;
         border-radius: 50% !important;
-        width: 150% !important;
-        height: 150% !important;
-        max-width: none !important;
-        max-height: none !important;
-        position: absolute !important;
+        width: 60px !important;
+        height: 60px !important;
+        position: relative !important;
         place-self: center !important;
-        margin: 0px 0px 0px 0px !important;
-        padding: 0px, 0px, 0px, 0px !important;
-        background-color: var(--icon-bg-color);
+        margin: 0 !important;
+        padding: 0 !important;
+        background-color: var(--icon-bg-color, var(--primary-color)) !important;
       }
 
       .bubble-icon {
-        width: 40%;
-        position: relative !important;
-        --mdc-icon-size: 100px !important;
-        opacity: 0.5 !important;
-        color: var(--icon-color) !important;
+        width: 60% !important;
+        height: 60% !important;
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        color: var(--icon-color, var(--primary-text-color)) !important;
       }
 
       .bubble-name-container {
         grid-area: n;
         justify-self: start;
         margin-left: 20px;
-        max-width: calc(100% -(12px + 0px));
+        max-width: calc(100% - 60px);
       }
 
       .bubble-name {
         font-weight: bold;
         font-size: 16px;
-        color: var(--icon-color);
+        color: var(--icon-color, var(--primary-text-color));
+        margin: 0;
       }
 
       .bubble-state {
-        font-weight: bold;
+        font-weight: normal;
         font-size: 14px;
-        color: var(--icon-color);
+        color: var(--icon-color, var(--secondary-text-color));
+        margin: 0;
       }
 
-      .rows-2 .bubble-sub-button-container {
+      .bubble-sub-button-container {
         grid-area: b;
         display: flex !important;
-        flex-wrap: wrap;
         flex-direction: column;
         justify-content: space-evenly;
-        width: auto !important;
-        padding-right: 0px;
+        align-items: center;
+        width: 100% !important;
         height: 100% !important;
-        padding-top: 10px;
-        padding-bottom: 10px;
-      }
-
-      .rows-2 .bubble-sub-button {
-        height: 32px !important;
+        padding: 10px;
       }
 
       .bubble-sub-button {
         min-width: 32px !important;
         width: 32px !important;
+        height: 32px !important;
         border-radius: 50% !important;
         transition: transform 0.2s ease;
+        margin: 2px 0;
       }
 
       .bubble-sub-button:active {
@@ -357,7 +400,7 @@ ${iconVars}      }
     return {
       name: 'Living Room',
       icon: 'mdi:sofa',
-      main_entity: 'sensor.temperature',
+      main_entity: 'sensor.time',
       entities: [
         {
           entity: 'light.living_room',
@@ -382,7 +425,7 @@ window.customCards.push({
 });
 
 console.info(
-  '%c  BUBBLE-ROOM-CARD  %c  Version 1.0.1  ',
+  '%c  BUBBLE-ROOM-CARD  %c  Version 1.0.2  ',
   'color: orange; font-weight: bold; background: black',
   'color: white; font-weight: bold; background: dimgray'
 );
