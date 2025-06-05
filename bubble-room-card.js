@@ -63,7 +63,7 @@ class BubbleRoomCard extends HTMLElement {
     return this._hass;
   }
 
-  render() {
+render() {
     if (!this._hass || !this.config) {
       console.warn('Bubble Room Card: Missing hass or config');
       return;
@@ -105,41 +105,52 @@ class BubbleRoomCard extends HTMLElement {
       const bubbleConfig = this.generateBubbleConfig();
       console.log('Generated Bubble Config:', bubbleConfig);
 
+      // Validate the config has required fields
+      if (!bubbleConfig.card_type) {
+        throw new Error('Missing card_type in bubble configuration');
+      }
+
       // Clear previous content
       this.shadowRoot.innerHTML = '';
       
       // Create bubble card element
       const bubbleCard = document.createElement('bubble-card');
       
-      // Set hass first
+      // Set the config first, then hass - this order is important
+      bubbleCard.setConfig(bubbleConfig);
       bubbleCard.hass = this._hass;
-      
-      // Try to set config with error handling
-      try {
-        bubbleCard.setConfig(bubbleConfig);
-      } catch (configError) {
-        console.error('Bubble card config error:', configError);
-        // Try with a simpler config if the main one fails
-        const simpleConfig = this.generateSimpleBubbleConfig();
-        console.log('Trying simple config:', simpleConfig);
-        bubbleCard.setConfig(simpleConfig);
-      }
       
       this.shadowRoot.appendChild(bubbleCard);
     } catch (error) {
       console.error('Bubble Room Card render error:', error);
-      this.shadowRoot.innerHTML = `
-        <ha-card>
-          <div style="padding: 16px; color: red; text-align: center;">
-            <h3>Render Error</h3>
-            <p>${error.message}</p>
-            <p><small>Check browser console for details</small></p>
-          </div>
-        </ha-card>
-      `;
+      console.error('Error stack:', error.stack);
+      
+      // Try fallback approach
+      try {
+        const simpleConfig = this.generateSimpleBubbleConfig();
+        console.log('Trying simple config as fallback:', simpleConfig);
+        
+        const bubbleCard = document.createElement('bubble-card');
+        bubbleCard.setConfig(simpleConfig);
+        bubbleCard.hass = this._hass;
+        
+        this.shadowRoot.innerHTML = '';
+        this.shadowRoot.appendChild(bubbleCard);
+      } catch (fallbackError) {
+        console.error('Fallback config also failed:', fallbackError);
+        this.shadowRoot.innerHTML = `
+          <ha-card>
+            <div style="padding: 16px; color: red; text-align: center;">
+              <h3>Configuration Error</h3>
+              <p>Main error: ${error.message}</p>
+              <p>Fallback error: ${fallbackError.message}</p>
+              <p><small>Check browser console for full details</small></p>
+            </div>
+          </ha-card>
+        `;
+      }
     }
   }
-
   generateSimpleBubbleConfig() {
     // Fallback simple configuration
     return {
