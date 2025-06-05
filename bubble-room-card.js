@@ -183,20 +183,25 @@ class BubbleRoomCard extends HTMLElement {
         };
       });
 
-    // Start with basic config - MUST include card_type and button_type
-    const bubbleConfig = {
-      card_type: 'button',
-      button_type: subButtons.length > 0 ? 'state' : 'name',
-      entity: this.config.main_entity,
-      name: this.config.name,
-      icon: this.config.icon,
-      show_name: true,
-      show_icon: true,
-      show_state: true,
-      tap_action: {
-        action: 'navigate',
-        navigation_path: this.config.navigation_path
-      }
+    // Build the configuration object step by step to ensure all required fields are present
+    const bubbleConfig = {};
+    
+    // Required fields first
+    bubbleConfig.card_type = 'button';
+    bubbleConfig.button_type = subButtons.length > 0 ? 'state' : 'name';
+    bubbleConfig.entity = this.config.main_entity;
+    
+    // Optional fields
+    bubbleConfig.name = this.config.name;
+    bubbleConfig.icon = this.config.icon;
+    bubbleConfig.show_name = true;
+    bubbleConfig.show_icon = true;
+    bubbleConfig.show_state = true;
+    
+    // Navigation action
+    bubbleConfig.tap_action = {
+      action: 'navigate',
+      navigation_path: this.config.navigation_path
     };
 
     // Add sub-buttons if we have them
@@ -205,8 +210,14 @@ class BubbleRoomCard extends HTMLElement {
       bubbleConfig.card_layout = 'large-2-rows';
     }
 
-    // Add styles
+    // Add styles last
     bubbleConfig.styles = this.generateStyles();
+
+    // Validate that card_type is definitely set
+    if (!bubbleConfig.card_type) {
+      console.error('card_type is missing from bubble config');
+      bubbleConfig.card_type = 'button';
+    }
 
     return bubbleConfig;
   }
@@ -437,7 +448,7 @@ window.customCards.push({
 });
 
 console.info(
-  '%c  BUBBLE-ROOM-CARD  %c  Version 1.0.4  ',
+  '%c  BUBBLE-ROOM-CARD  %c  Version 1.0.5  ',
   'color: orange; font-weight: bold; background: black',
   'color: white; font-weight: bold; background: dimgray'
 );
