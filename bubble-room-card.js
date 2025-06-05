@@ -111,7 +111,7 @@ class BubbleRoomCard extends HTMLElement {
       // Create bubble card element
       const bubbleCard = document.createElement('bubble-card');
       
-      // Set hass first, then config
+      // Set hass first
       bubbleCard.hass = this._hass;
       
       // Try to set config with error handling
@@ -143,7 +143,8 @@ class BubbleRoomCard extends HTMLElement {
   generateSimpleBubbleConfig() {
     // Fallback simple configuration
     return {
-      card_type: 'button',  // Added missing card_type
+      card_type: 'button',
+      button_type: 'name',
       entity: this.config.main_entity,
       name: this.config.name,
       icon: this.config.icon,
@@ -153,7 +154,8 @@ class BubbleRoomCard extends HTMLElement {
       tap_action: {
         action: 'navigate',
         navigation_path: this.config.navigation_path
-      }
+      },
+      styles: this.generateSimpleStyles()
     };
   }
 
@@ -181,9 +183,10 @@ class BubbleRoomCard extends HTMLElement {
         };
       });
 
-    // Start with basic config - MUST include card_type
+    // Start with basic config - MUST include card_type and button_type
     const bubbleConfig = {
-      card_type: 'button',  // This is crucial - bubble-card requires this
+      card_type: 'button',
+      button_type: subButtons.length > 0 ? 'state' : 'name',
       entity: this.config.main_entity,
       name: this.config.name,
       icon: this.config.icon,
@@ -200,7 +203,6 @@ class BubbleRoomCard extends HTMLElement {
     if (subButtons.length > 0) {
       bubbleConfig.sub_button = subButtons;
       bubbleConfig.card_layout = 'large-2-rows';
-      bubbleConfig.button_type = 'state';
     }
 
     // Add styles
@@ -209,24 +211,27 @@ class BubbleRoomCard extends HTMLElement {
     return bubbleConfig;
   }
 
+  generateSimpleStyles() {
+    return `
+      .bubble-button-card {
+        background-color: var(--ha-card-background, var(--card-background-color, white)) !important;
+      }
+      .bubble-name {
+        color: var(--primary-text-color) !important;
+      }
+      .bubble-state {
+        color: var(--secondary-text-color) !important;
+      }
+    `;
+  }
+
   generateStyles() {
     const entities = this.config.entities
       .slice(0, 4)
       .filter(entity => this._hass.states[entity.entity]); // Only include existing entities
     
     if (entities.length === 0) {
-      // Simple styles for cards without sub-buttons
-      return `
-        .bubble-button-card {
-          background-color: var(--ha-card-background, var(--card-background-color, white)) !important;
-        }
-        .bubble-name {
-          color: var(--primary-text-color) !important;
-        }
-        .bubble-state {
-          color: var(--secondary-text-color) !important;
-        }
-      `;
+      return this.generateSimpleStyles();
     }
 
     // Generate dynamic icon styles
@@ -432,7 +437,7 @@ window.customCards.push({
 });
 
 console.info(
-  '%c  BUBBLE-ROOM-CARD  %c  Version 1.0.3  ',
+  '%c  BUBBLE-ROOM-CARD  %c  Version 1.0.4  ',
   'color: orange; font-weight: bold; background: black',
   'color: white; font-weight: bold; background: dimgray'
 );
