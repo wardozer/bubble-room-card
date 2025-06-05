@@ -2,6 +2,7 @@ class BubbleRoomCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
+    this._hass = null;
   }
 
   setConfig(config) {
@@ -9,46 +10,138 @@ class BubbleRoomCard extends HTMLElement {
       throw new Error('Invalid configuration');
     }
 
+    // Validate required fields
+    if (!config.name) {
+      throw new Error('name is required');
+    }
+    if (!config.icon) {
+      throw new Error('icon is required');
+    }
+    if (!config.main_entity) {
+      throw new Error('main_entity is required');
+    }
+
     this.config = {
-      name: config.name || 'Room',
-      icon: config.icon || 'mdi:home',
+      name: config.name,
+      icon: config.icon,
       main_entity: config.main_entity,
       entities: config.entities || [],
       navigation_path: config.navigation_path || '/lovelace/default',
       ...config
     };
 
-    this.render();
+    // Validate entities
+    if (this.config.entities.length > 4) {
+      console.warn('Bubble Room Card: Maximum 4 entities supported, truncating list');
+      this.config.entities = this.config.entities.slice(0, 4);
+    }
+
+    this.config.entities.forEach((entity, index) => {
+      if (!entity.entity) {
+        throw new Error(`Entity ${index + 1}: entity ID is required`);
+      }
+      if (!entity.icon) {
+        throw new Error(`Entity ${index + 1}: icon is required`);
+      }
+    });
+
+    console.log('Bubble Room Card Config:', this.config);
+    
+    if (this._hass) {
+      this.render();
+    }
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    if (this.config) {
+      this.render();
+    }
+  }
+
+  get hass() {
+    return this._hass;
   }
 
   render() {
-    const bubbleConfig = this.generateBubbleConfig();
-    console.log('Generated Bubble Config:', bubbleConfig); // ADD THIS LINE
+    if (!this._hass || !this.config) {
+      console.warn('Bubble Room Card: Missing hass or config');
+      return;
+    }
 
-    
-    // Create bubble card element
-    const bubbleCard = document.createElement('bubble-card');
-    bubbleCard.setConfig(bubbleConfig);
-    
-    this.shadowRoot.innerHTML = '';
-    this.shadowRoot.appendChild(bubbleCard);
+    // Check if bubble-card is available
+    if (!customElements.get('bubble-card')) {
+      this.shadowRoot.innerHTML = `
+        <ha-card>
+          <div style="padding: 16px; color: red; text-align: center;">
+            <h3>Bubble Card Required</h3>
+            <p>Please install <a href="https://github.com/Clooos/Bubble-Card" target="_blank">Bubble Card</a> first.</p>
+          </div>
+        </ha-card>
+      `;
+      return;
+    }
+
+    // Validate main entity exists
+    if (!this._hass.states[this.config.main_entity]) {
+      this.shadowRoot.innerHTML = `
+        <ha-card>
+          <div style="padding: 16px; color: red; text-align: center;">
+            <h3>Entity Not Found</h3>
+            <p>Main entity "${this.config.main_entity}" not found in Home Assistant.</p>
+          </div>
+        </ha-card>
+      `;
+      return;
+    }
+
+    // Validate sub-button entities exist
+    const missingEntities = this.config.entities.filter(entity => !this._hass.states[entity.entity]);
+    if (missingEntities.length > 0) {
+      console.warn('Bubble Room Card: Missing entities:', missingEntities.map(e => e.entity));
+    }
+
+    try {
+      const bubbleConfig = this.generateBubbleConfig();
+      console.log('Generated Bubble Config:', bubbleConfig);
+
+      // Create bubble card element
+      const bubbleCard = document.createElement('bubble-card');
+      bubbleCard.hass = this._hass;
+      bubbleCard.setConfig(bubbleConfig);
+      
+      this.shadowRoot.innerHTML = '';
+      this.shadowRoot.appendChild(bubbleCard);
+    } catch (error) {
+      console.error('Bubble Room Card render error:', error);
+      this.shadowRoot.innerHTML = `
+        <ha-card>
+          <div style="padding: 16px; color: red; text-align: center;">
+            <h3>Render Error</h3>
+            <p>${error.message}</p>
+          </div>
+        </ha-card>
+      `;
+    }
   }
 
   generateBubbleConfig() {
     const entities = this.config.entities.slice(0, 4); // Max 4 entities
     
-    const subButtons = entities.map((entity, index) => ({
-      entity: entity.entity,
-      show_last_changed: false,
-      show_attribute: false,
-      show_state: false,
-      tap_action: {
-        action: entity.tap_action || 'toggle',
-        haptic: 'light'
-      },
-      show_background: true,
-      icon: entity.icon || 'mdi:power'
-    }));
+    const subButtons = entities
+      .filter(entity => this._hass.states[entity.entity]) // Only include existing entities
+      .map((entity, index) => ({
+        entity: entity.entity,
+        show_last_changed: false,
+        show_attribute: false,
+        show_state: false,
+        tap_action: {
+          action: entity.tap_action || 'toggle',
+          haptic: 'light'
+        },
+        show_background: true,
+        icon: entity.icon || 'mdi:power'
+      }));
 
     const bubbleConfig = {
       type: 'custom:bubble-card',
@@ -80,14 +173,19 @@ class BubbleRoomCard extends HTMLElement {
   }
 
   generateStyles() {
-    const entities = this.config.entities.slice(0, 4);
+    const entities = this.config.entities
+      .slice(0, 4)
+      .filter(entity => this._hass.states[entity.entity]); // Only include existing entities
     
     // Generate dynamic icon styles
     let iconVars = '';
     entities.forEach((entity, index) => {
       const num = index + 1;
       const onState = entity.on_state || 'on';
-      iconVars += `    --bubble-sub-button-${num}-icon: \${hass.states['${entity.entity}'].state === '${onState}' ? '${entity.icon_on || entity.icon || 'mdi:power'}' : '${entity.icon_off || entity.icon || 'mdi:power-off'}'};\\n`;
+      const iconOn = entity.icon_on || entity.icon || 'mdi:power';
+      const iconOff = entity.icon_off || entity.icon || 'mdi:power-off';
+      
+      iconVars += `    --bubble-sub-button-${num}-icon: \${hass.states['${entity.entity}'].state === '${onState}' ? '${iconOn}' : '${iconOff}'};\\n`;
     });
 
     // Generate main card dynamic colors
@@ -284,7 +382,7 @@ window.customCards.push({
 });
 
 console.info(
-  '%c  BUBBLE-ROOM-CARD  %c  Version 1.0.0  ',
+  '%c  BUBBLE-ROOM-CARD  %c  Version 1.0.1  ',
   'color: orange; font-weight: bold; background: black',
   'color: white; font-weight: bold; background: dimgray'
 );
