@@ -143,14 +143,17 @@ class BubbleRoomCard extends HTMLElement {
   generateSimpleBubbleConfig() {
     // Fallback simple configuration
     return {
-      type: 'custom:bubble-card',
-      card_type: 'button',
+      card_type: 'button',  // Added missing card_type
       entity: this.config.main_entity,
       name: this.config.name,
       icon: this.config.icon,
       show_name: true,
       show_icon: true,
-      show_state: true
+      show_state: true,
+      tap_action: {
+        action: 'navigate',
+        navigation_path: this.config.navigation_path
+      }
     };
   }
 
@@ -159,42 +162,46 @@ class BubbleRoomCard extends HTMLElement {
     
     const subButtons = entities
       .filter(entity => this._hass.states[entity.entity]) // Only include existing entities
-      .map((entity, index) => ({
-        entity: entity.entity,
-        show_last_changed: false,
-        show_attribute: false,
-        show_state: false,
-        tap_action: {
-          action: entity.tap_action || 'toggle'
-        },
-        show_background: true,
-        icon: entity.icon || 'mdi:power'
-      }));
+      .map((entity, index) => {
+        const entityState = this._hass.states[entity.entity];
+        const onState = entity.on_state || 'on';
+        const isOn = entityState.state === onState;
+        
+        return {
+          entity: entity.entity,
+          show_last_changed: false,
+          show_attribute: false,
+          show_state: false,
+          tap_action: {
+            action: entity.tap_action || 'toggle'
+          },
+          show_background: true,
+          icon: isOn ? (entity.icon_on || entity.icon) : (entity.icon_off || entity.icon),
+          show_icon: true
+        };
+      });
 
-    // Start with basic config
+    // Start with basic config - MUST include card_type
     const bubbleConfig = {
-      type: 'custom:bubble-card',
-      card_type: 'button',
+      card_type: 'button',  // This is crucial - bubble-card requires this
       entity: this.config.main_entity,
       name: this.config.name,
       icon: this.config.icon,
       show_name: true,
       show_icon: true,
-      show_state: true
+      show_state: true,
+      tap_action: {
+        action: 'navigate',
+        navigation_path: this.config.navigation_path
+      }
     };
 
-    // Add optional properties if we have sub-buttons
+    // Add sub-buttons if we have them
     if (subButtons.length > 0) {
       bubbleConfig.sub_button = subButtons;
       bubbleConfig.card_layout = 'large-2-rows';
       bubbleConfig.button_type = 'state';
     }
-
-    // Add tap action
-    bubbleConfig.tap_action = {
-      action: 'navigate',
-      navigation_path: this.config.navigation_path
-    };
 
     // Add styles
     bubbleConfig.styles = this.generateStyles();
@@ -425,7 +432,7 @@ window.customCards.push({
 });
 
 console.info(
-  '%c  BUBBLE-ROOM-CARD  %c  Version 1.0.2  ',
+  '%c  BUBBLE-ROOM-CARD  %c  Version 1.0.3  ',
   'color: orange; font-weight: bold; background: black',
   'color: white; font-weight: bold; background: dimgray'
 );
